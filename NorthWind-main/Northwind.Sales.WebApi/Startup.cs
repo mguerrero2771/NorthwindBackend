@@ -135,10 +135,14 @@ builder.Configuration
         //  de la API y la interfaz UI de Swagger en el navegador.
         if (app.Environment.IsDevelopment())
         {
-            app.UseSwagger();
+            //app.UseSwagger();
             //  Activa la interfaz (UI) de Swagger para probar la API en desarrollo
-            app.UseSwaggerUI();
+            //app.UseSwaggerUI();
         }
+
+        app.UseSwagger();
+        //  Activa la interfaz (UI) de Swagger para probar la API en desarrollo
+        app.UseSwaggerUI();
 
         //  Registra todos los servicios necesarios usando Clean Architecture (casos de uso,
         //  repositorios, presenters, etc.)

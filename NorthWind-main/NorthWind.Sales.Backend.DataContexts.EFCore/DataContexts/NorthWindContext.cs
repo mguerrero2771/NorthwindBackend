@@ -8,8 +8,13 @@ internal class NorthWindContext : DbContext
     protected override void OnConfiguring(
    DbContextOptionsBuilder optionsBuilder)
     {
+        /*optionsBuilder.UseSqlServer(
+        "Data Source=SEBAS;Initial Catalog=NorthWindDB;Integrated Security=True;Trust Server Certificate=True");*/
+
         optionsBuilder.UseSqlServer(
-        "Data Source=SEBAS;Initial Catalog=NorthWindDB;Integrated Security=True;Trust Server Certificate=True");
+        "workstation id=NorthWind_Moviles.mssql.somee.com;packet size=4096;user id=AZ_developer_SQLLogin_2;pwd=lip1fgttra;data source=NorthWind_Moviles.mssql.somee.com;persist security info=False;initial catalog=NorthWind_Moviles;TrustServerCertificate=True"); 
+
+
     }
     public DbSet<Order> Orders { get; set; }
     public DbSet<OrderDetail> OrderDetails { get; set; }
