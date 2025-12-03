@@ -1,0 +1,91 @@
+Guía de requisitos y pasos para ejecutar NorthWind
+
+1) Prerrequisitos
+- Instalar .NET SDK 8.x (https://dotnet.microsoft.com/download)
+- Instalar Visual Studio 2022 (Workloads: ASP.NET and web development, .NET desktop development)
+- Instalar SQL Server (Developer/Express) y SQL Server Management Studio (SSMS)
+- Tener una instancia SQL accesible (ej.: nombre del servidor: SEBAS). Ajusta este nombre según tu PC.
+
+2) Clonar/abrir el proyecto
+- Carpeta raíz: c:\Users\<TU_USUARIO>\Desktop\Northwind
+- Soluciones:
+  - NorthWind-main\NorthWind.sln (solución principal)
+  - NorthWind.Membership\NorthWind.Membership.sln (solución Membership)
+
+3) Configurar cadenas de conexión
+- Archivo: NorthWind-main\Northwind.Sales.WebApi\appsettings.json
+  - DBOptions.ConnectionString: Data Source=<TU_SERVIDOR>;Initial Catalog=NorthWindDB;Integrated Security=True;Trust Server Certificate=True
+  - DBOptions.DomainLogsConnectionString: Data Source=<TU_SERVIDOR>;Initial Catalog=NorthWindLogsDB;Integrated Security=True;Trust Server Certificate=True
+  - MembershipDBOptions.ConnectionString: Data Source=<TU_SERVIDOR>;Initial Catalog=NorthWindUsersDB;Integrated Security=True;Trust Server Certificate=True
+- DataContexts de diseño (si se usa diseño en tiempo de diseño):
+  - NorthWind.Sales.Backend.DataContexts.EFCore\DataContexts\NorthWindContext.cs (UseSqlServer)
+  - NorthWind.Sales.Backend.DataContexts.EFCore\DataContexts\NorthWindDomainLogsContextFactory.cs
+  - NorthWind.Membership\NorthWind.Membership.Backend.AspNetIdentity\DataContexts\NorthWindMembershipContextFactory.cs
+
+4) Herramientas EF Core
+- Alinear versiones EF Core a 8.0.x (ya configurado en este repo: 8.0.8)
+- Instalar dotnet-ef (si no está):
+  dotnet tool install --global dotnet-ef
+
+5) Restaurar paquetes y configurar origen local NuGet
+- Crear carpeta local de paquetes (si no existe):
+  if (!(Test-Path "C:\\Northwind\\NorthWind.Packages")) { New-Item -ItemType Directory -Path "C:\\Northwind\\NorthWind.Packages" | Out-Null }
+- Agregar origen local:
+  dotnet nuget add source "C:\\Northwind\\NorthWind.Packages" -n NorthwindLocal
+
+6) Empaquetado (para resolver dependencias internas)
+- Empaquetar solución Membership:
+  dotnet pack "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind.Membership\\NorthWind.Membership.sln" -o "C:\\Northwind\\NorthWind.Packages" --include-source
+- Empaquetar solución principal:
+  dotnet pack "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind-main\\NorthWind.sln" -o "C:\\Northwind\\NorthWind.Packages" --include-source
+
+7) Migraciones EF (opción PMC en Visual Studio)
+- Eliminar (si deseas recrearlas) las carpetas Migrations de:
+  - NorthWind-main\NorthWind.Sales.Backend.DataContexts.EFCore\Migrations
+  - NorthWind.Membership\NorthWind.Membership.Backend.AspNetIdentity\Migrations
+- Abrir Package Manager Console (PMC). Usa los siguientes comandos:
+
+  # 1. NorthWindContext
+  Add-Migration AddProductAndCustomer -p NorthWind.Sales.Backend.DataContexts.EFCore -s NorthWind.Sales.Backend.DataContexts.EFCore -c NorthWindContext
+  Update-Database -p NorthWind.Sales.Backend.DataContexts.EFCore -s NorthWind.Sales.Backend.DataContexts.EFCore -context NorthWindContext
+
+  # 2. NorthWindDomainLogsContext
+  Add-Migration InitialCreate -p NorthWind.Sales.Backend.DataContexts.EFCore -s NorthWind.Sales.Backend.DataContexts.EFCore -c NorthWindDomainLogsContext
+  Update-Database -p NorthWind.Sales.Backend.DataContexts.EFCore -s NorthWind.Sales.Backend.DataContexts.EFCore -context NorthWindDomainLogsContext
+
+  # 3. Migración adicional (DomainLogs)
+  Add-Migration AddUserNameToDomainLog -p NorthWind.Sales.Backend.DataContexts.EFCore -s NorthWind.Sales.Backend.DataContexts.EFCore -c NorthWindDomainLogsContext
+  Update-Database -p NorthWind.Sales.Backend.DataContexts.EFCore -s NorthWind.Sales.Backend.DataContexts.EFCore -context NorthWindDomainLogsContext
+
+  # 4. Membership AspNetIdentity
+  Add-Migration InitialCreate -s NorthWind.Membership.Backend.AspNetIdentity -p NorthWind.Membership.Backend.AspNetIdentity
+  Update-Database -s NorthWind.Membership.Backend.AspNetIdentity -p NorthWind.Membership.Backend.AspNetIdentity
+
+8) Migraciones EF (opción CLI dotnet ef)
+- NorthWindContext (Sales):
+  dotnet ef migrations add AddProductAndCustomer --project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind-main\\NorthWind.Sales.Backend.DataContexts.EFCore\\NorthWind.Sales.Backend.DataContexts.EFCore.csproj" --startup-project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind-main\\NorthWind.Sales.Backend.DataContexts.EFCore\\NorthWind.Sales.Backend.DataContexts.EFCore.csproj" --context NorthWindContext
+  dotnet ef database update --project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind-main\\NorthWind.Sales.Backend.DataContexts.EFCore\\NorthWind.Sales.Backend.DataContexts.EFCore.csproj" --startup-project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind-main\\NorthWind.Sales.Backend.DataContexts.EFCore\\NorthWind.Sales.Backend.DataContexts.EFCore.csproj" --context NorthWindContext
+
+- NorthWindDomainLogsContext:
+  dotnet ef migrations add InitialCreate --project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind-main\\NorthWind.Sales.Backend.DataContexts.EFCore\\NorthWind.Sales.Backend.DataContexts.EFCore.csproj" --startup-project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind-main\\NorthWind.Sales.Backend.DataContexts.EFCore\\NorthWind.Sales.Backend.DataContexts.EFCore.csproj" --context NorthWindDomainLogsContext
+  dotnet ef database update --project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind-main\\NorthWind.Sales.Backend.DataContexts.EFCore\\NorthWind.Sales.Backend.DataContexts.EFCore.csproj" --startup-project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind-main\\NorthWind.Sales.Backend.DataContexts.EFCore\\NorthWind.Sales.Backend.DataContexts.EFCore.csproj" --context NorthWindDomainLogsContext
+
+- Migración adicional DomainLogs:
+  dotnet ef migrations add AddUserNameToDomainLog --project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind-main\\NorthWind.Sales.Backend.DataContexts.EFCore\\NorthWind.Sales.Backend.DataContexts.EFCore.csproj" --startup-project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind-main\\NorthWind.Sales.Backend.DataContexts.EFCore\\NorthWind.Sales.Backend.DataContexts.EFCore.csproj" --context NorthWindDomainLogsContext
+  dotnet ef database update --project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind-main\\NorthWind.Sales.Backend.DataContexts.EFCore\\NorthWind.Sales.Backend.DataContexts.EFCore.csproj" --startup-project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind-main\\NorthWind.Sales.Backend.DataContexts.EFCore\\NorthWind.Sales.Backend.DataContexts.EFCore.csproj" --context NorthWindDomainLogsContext
+
+- Membership AspNetIdentity:
+  dotnet ef migrations add InitialCreate --project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind.Membership\\NorthWind.Membership.Backend.AspNetIdentity\\NorthWind.Membership.Backend.AspNetIdentity.csproj" --startup-project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind.Membership\\NorthWind.Membership.Backend.AspNetIdentity\\NorthWind.Membership.Backend.AspNetIdentity.csproj"
+  dotnet ef database update --project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind.Membership\\NorthWind.Membership.Backend.AspNetIdentity\\NorthWind.Membership.Backend.AspNetIdentity.csproj" --startup-project "c:\\Users\\<TU_USUARIO>\\Desktop\\Northwind\\NorthWind.Membership\\NorthWind.Membership.Backend.AspNetIdentity\\NorthWind.Membership.Backend.AspNetIdentity.csproj"
+
+9) Ejecutar proyectos
+- Web API: Northwind.Sales.WebApi (profiles en launchSettings.json)
+- Blazor Client: NorthWind.Sales.BlazorClient (si aplica)
+- Verificar que las BD NorthWindDB, NorthWindLogsDB y NorthWindUsersDB existen tras Update-Database.
+
+10) Problemas comunes
+- NU1101 (paquete no encontrado): asegurarse de empaquetar primero Membership y agregar el origen local C:\\Northwind\\NorthWind.Packages.
+- Conexión SQL: si usas instancia distinta a SEBAS, reemplaza Data Source con tu servidor.
+- Errores de preview deps (NU5104): son advertencias de dependencias prerelease; el pack sigue funcionando.
+
+Fin de guía.
