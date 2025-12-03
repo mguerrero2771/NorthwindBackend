@@ -1,3 +1,19 @@
+extraer en disco C 
+
+#1 NorthWind.Membership 
+
+- compilar
+- en consola de paquetes nuget 
+dotnet pack -o "C:\Northwind\NorthWind.Packages" --include-source
+
+-realizar primera migracióm
+
+Add-Migration InitialCreate -s NorthWind.Membership.Backend.AspNetIdentity -p NorthWind.Membership.Backend.AspNetIdentity
+Update-Database -s NorthWind.Membership.Backend.AspNetIdentity -p NorthWind.Membership.Backend.AspNetIdentity
+
+
+
+
 # 1. Primera migración para NorthWindContext
 Add-Migration AddProductAndCustomer -p NorthWind.Sales.Backend.DataContexts.EFCore -s NorthWind.Sales.Backend.DataContexts.EFCore -c NorthWindContext
 Update-Database -p NorthWind.Sales.Backend.DataContexts.EFCore -s NorthWind.Sales.Backend.DataContexts.EFCore -context NorthWindContext
@@ -9,12 +25,4 @@ Update-Database -p NorthWind.Sales.Backend.DataContexts.EFCore -s NorthWind.Sale
 # 3. Migración adicional para NorthWindDomainLogsContext (CORREGIDO)
 Add-Migration AddUserNameToDomainLog -p NorthWind.Sales.Backend.DataContexts.EFCore -s NorthWind.Sales.Backend.DataContexts.EFCore -c NorthWindDomainLogsContext
 Update-Database -p NorthWind.Sales.Backend.DataContexts.EFCore -s NorthWind.Sales.Backend.DataContexts.EFCore -context NorthWindDomainLogsContext
-
-
-
-dotnet pack -o "C:\Northwind\NorthWind.Packages" --include-source
-
-
-Add-Migration InitialCreate -s NorthWind.Membership.Backend.AspNetIdentity -p NorthWind.Membership.Backend.AspNetIdentity
-Update-Database -s NorthWind.Membership.Backend.AspNetIdentity -p NorthWind.Membership.Backend.AspNetIdentity
 
