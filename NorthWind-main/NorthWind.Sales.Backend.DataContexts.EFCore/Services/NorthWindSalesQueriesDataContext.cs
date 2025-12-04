@@ -25,7 +25,7 @@ internal class NorthWindSalesQueriesDataContext :
     public new IQueryable<Shipper> Shippers => base.Shippers;
     public new IQueryable<Order> Orders => base.Orders;
     public new IQueryable<OrderDetail> OrderDetails => base.OrderDetails;
-    public Task<ReturnType> FirstOrDefaultAync<ReturnType>(
+    public Task<ReturnType?> FirstOrDefaultAync<ReturnType>(
    IQueryable<ReturnType> queryable) =>
    queryable.FirstOrDefaultAsync();
     public async Task<IEnumerable<ReturnType>> ToListAsync<ReturnType>(

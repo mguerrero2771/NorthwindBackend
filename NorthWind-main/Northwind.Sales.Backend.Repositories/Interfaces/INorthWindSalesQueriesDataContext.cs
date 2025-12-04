@@ -11,7 +11,7 @@ namespace NorthWind.Sales.Backend.Repositories.Interfaces
         IQueryable<Shipper> Shippers { get; }
         IQueryable<NorthWind.Sales.Backend.BusinessObjects.POCOEntities.Order> Orders { get; }
         IQueryable<OrderDetail> OrderDetails { get; }
-        Task<ReturnType> FirstOrDefaultAync<ReturnType>(IQueryable<ReturnType> queryable);
+        Task<ReturnType?> FirstOrDefaultAync<ReturnType>(IQueryable<ReturnType> queryable);
         Task<IEnumerable<ReturnType>> ToListAsync<ReturnType>(IQueryable<ReturnType> queryable);
     }
 

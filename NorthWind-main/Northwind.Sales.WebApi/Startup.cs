@@ -11,6 +11,8 @@ using NorthWind.Sales.Backend.Controllers.Membership;
 using Microsoft.AspNetCore.Identity;
 using NorthWind.Sales.Backend.Controllers.Membership.IdentityLite;
 using System.Text;
+using Microsoft.AspNetCore.Builder.Security.SessionBinding;
+using System.Security.Claims;
 
 namespace Northwind.Sales.WebApi;
 
@@ -86,6 +88,9 @@ builder.Configuration
         // In-memory cache for temporary lockout tracking
         builder.Services.AddMemoryCache();
 
+        // Register session store for browser-bound sessions
+        builder.Services.AddSingleton<ISessionStore, InMemorySessionStore>();
+
         // Membership DbContext (Users & Roles)
         // ASP.NET Identity sobre las tablas AspNet*
         var membershipConn = builder.Configuration.GetSection(MembershipDBOptions.SectionKey)[nameof(MembershipDBOptions.ConnectionString)];
@@ -153,6 +158,42 @@ builder.Configuration
         //  Habilita CORS en tiempo de ejecución para aceptar solicitudes de cualquier origen.
         app.UseCors();
         app.UseAuthentication();
+        // Validate bound sessions for authenticated requests
+        app.Use(async (ctx, next) =>
+        {
+            var path = ctx.Request.Path.Value ?? string.Empty;
+            // Allow swagger and auth endpoints without session validation
+            if (path.StartsWith("/swagger") || path.StartsWith("/auth/"))
+            {
+                await next();
+                return;
+            }
+            if (ctx.User?.Identity?.IsAuthenticated == true)
+            {
+                var sid = ctx.User.FindFirst(ClaimTypes.Sid)?.Value;
+                if (string.IsNullOrWhiteSpace(sid))
+                {
+                    ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return;
+                }
+                var store = ctx.RequestServices.GetRequiredService<ISessionStore>();
+                var session = await store.GetAsync(sid);
+                if (session is null || session.Revoked)
+                {
+                    ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return;
+                }
+                var ua = ctx.Request.Headers["User-Agent"].ToString() ?? string.Empty;
+                var dev = ctx.Request.Headers["X-Device-Id"].ToString();
+                if (!string.Equals(session.UserAgent, ua, StringComparison.Ordinal) ||
+                    (!string.IsNullOrWhiteSpace(session.DeviceId) && !string.Equals(session.DeviceId, dev, StringComparison.Ordinal)))
+                {
+                    ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return;
+                }
+            }
+            await next();
+        });
         app.UseAuthorization();
 
         // Seed membership data (roles/users)

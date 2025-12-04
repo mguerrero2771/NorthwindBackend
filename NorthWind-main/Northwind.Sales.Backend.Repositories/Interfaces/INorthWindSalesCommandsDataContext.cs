@@ -7,6 +7,11 @@ public interface INorthWindSalesCommandsDataContext
     Task AddOrderDetailsAsync(IEnumerable<Entities.OrderDetail> orderDetails);
     Task SaveChangesAsync();
 
+    // Customers CRUD
+    Task AddCustomerAsync(Entities.Customer customer);
+    Task UpdateCustomerAsync(Entities.Customer customer);
+    Task DeleteCustomerAsync(string customerId);
+
     // Categories CRUD
     Task AddCategoryAsync(Entities.Category category);
     Task UpdateCategoryAsync(Entities.Category category);
@@ -31,4 +36,5 @@ public interface INorthWindSalesCommandsDataContext
     Task UpdateOrderAsync(NorthWind.Sales.Backend.BusinessObjects.POCOEntities.Order order);
     Task DeleteOrderAsync(int orderId);
     Task RemoveOrderDetailsAsync(int orderId);
+    Task RemoveOrderDetailsByProductAsync(int productId);
 }

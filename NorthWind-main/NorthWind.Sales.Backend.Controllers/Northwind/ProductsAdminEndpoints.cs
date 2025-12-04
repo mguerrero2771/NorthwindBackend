@@ -119,27 +119,19 @@ public static class ProductsAdminEndpoints
 
     private static async Task<IResult> Delete(int id, INorthWindSalesCommandsDataContext commands, INorthWindSalesQueriesDataContext queries)
     {
-        // Prevenir conflicto de FK: si existen detalles que referencian el producto, devolver 409 con mensaje claro
-        var hasRefs = await queries.OrderDetails.AnyAsync(d => d.ProductId == id);
-        if (hasRefs)
-        {
-            return Results.Conflict(new ProblemDetails
-            {
-                Title = "No se puede eliminar el producto.",
-                Detail = "El producto está siendo utilizado en órdenes. Elimine o modifique esas órdenes antes de eliminar el producto.",
-                Status = StatusCodes.Status409Conflict,
-                Instance = "ProblemDetails/ProductInUse"
-            });
-        }
         try
         {
+            // Eliminación en cascada controlada: borrar detalles de orden que referencian el producto
+            await commands.RemoveOrderDetailsByProductAsync(id);
+            // Luego eliminar el producto
             await commands.DeleteProductAsync(id);
+            // Persistir una sola vez
             await commands.SaveChangesAsync();
             return Results.NoContent();
         }
         catch (DbUpdateException dbex)
         {
-            // Fallback si por alguna razón no detectamos antes
+            // Si aún hay conflicto de FK u otro problema de BD, reportar como conflicto
             return Results.Conflict(new ProblemDetails
             {
                 Title = "No se puede eliminar el producto.",

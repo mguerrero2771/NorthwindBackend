@@ -13,6 +13,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Identity;
 using NorthWind.Sales.Backend.Controllers.Membership.IdentityLite;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http.Headers;
+using Microsoft.Net.Http.Headers;
+using Microsoft.AspNetCore.Builder.Security.SessionBinding;
 
 namespace Microsoft.AspNetCore.Builder;
 
@@ -37,6 +40,7 @@ public static class NorthWindMembershipEndpoints
         IConfiguration cfg,
         [FromServices] SignInManager<ApplicationUser> signIn,
         [FromServices] UserManager<ApplicationUser> users,
+        [FromServices] ISessionStore sessions,
         [FromBody] LoginRequest req)
     {
         try
@@ -75,7 +79,13 @@ public static class NorthWindMembershipEndpoints
 
             var roles = (await users.GetRolesAsync(user)).ToArray();
             if (roles.Length == 0) roles = new[] { "User" };
-            var token = IssueJwt(cfg, user.Email ?? input, roles);
+            // Device and User-Agent binding
+            var userAgent = http.Request.Headers[HeaderNames.UserAgent].ToString() ?? string.Empty;
+            var deviceId = http.Request.Headers["X-Device-Id"].ToString();
+            // (Optional) enforce single-session: revoke prior sessions
+            await sessions.RevokeAllForUserAsync(user.Id);
+            var sessionId = await sessions.CreateAsync(user.Id, userAgent, string.IsNullOrWhiteSpace(deviceId) ? null : deviceId);
+            var token = IssueJwt(cfg, user.Email ?? input, roles, sessionId);
             return Results.Ok(new AuthResponse(token));
         }
         catch
@@ -85,8 +95,10 @@ public static class NorthWindMembershipEndpoints
     }
 
     private static async Task<IResult> Register(
+        HttpContext http,
         IConfiguration cfg,
         [FromServices] UserManager<ApplicationUser> users,
+        [FromServices] ISessionStore sessions,
         [FromBody] RegisterRequest req)
     {
         if (req is null)
@@ -136,7 +148,11 @@ public static class NorthWindMembershipEndpoints
             return Results.BadRequest(new { message = string.Join("; ", create.Errors.Select(e => e.Description)) });
 
         await users.AddToRoleAsync(user, "User");
-        var token = IssueJwt(cfg, email, new[] { "User" });
+        // Crear sesión ligada al navegador para el usuario recién creado
+        var userAgent = http.Request.Headers[HeaderNames.UserAgent].ToString() ?? string.Empty;
+        var deviceId = http.Request.Headers["X-Device-Id"].ToString();
+        var sessionId = await sessions.CreateAsync(user.Id, userAgent, string.IsNullOrWhiteSpace(deviceId) ? null : deviceId);
+        var token = IssueJwt(cfg, email, new[] { "User" }, sessionId);
         return Results.Ok(new AuthResponse(token));
     }
 
@@ -170,7 +186,7 @@ public static class NorthWindMembershipEndpoints
         return Results.Ok(new { email, roles, isLockedOut, lockoutEnd });
     }
 
-    private static string IssueJwt(IConfiguration cfg, string email, IEnumerable<string> roles)
+    private static string IssueJwt(IConfiguration cfg, string email, IEnumerable<string> roles, string sessionId)
     {
         var section = cfg.GetSection("JwtOptions");
         var securityKey = section["SecurityKey"]!;
@@ -183,6 +199,7 @@ public static class NorthWindMembershipEndpoints
             new Claim(ClaimTypes.NameIdentifier, email),
             new Claim(JwtRegisteredClaimNames.Sub, email),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(ClaimTypes.Sid, sessionId)
         };
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
 

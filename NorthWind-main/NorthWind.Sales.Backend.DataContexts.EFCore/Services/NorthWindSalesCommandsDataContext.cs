@@ -146,6 +146,13 @@ partial class NorthWindSalesCommandsDataContext
         var details = await OrderDetails.Where(d => d.OrderId == orderId).ToListAsync();
         if (details.Count > 0) RemoveRange(details);
     }
+
+    // Remove all order details that reference a given product
+    public async Task RemoveOrderDetailsByProductAsync(int productId)
+    {
+        var details = await OrderDetails.Where(d => d.ProductId == productId).ToListAsync();
+        if (details.Count > 0) RemoveRange(details);
+    }
 }
 
 // Products operations
@@ -166,5 +173,26 @@ partial class NorthWindSalesCommandsDataContext
     {
         var prod = await Products.FirstOrDefaultAsync(p => p.ProductID == productId);
         if (prod is not null) Remove(prod);
+    }
+}
+
+// Customers operations
+partial class NorthWindSalesCommandsDataContext
+{
+    public async Task AddCustomerAsync(NorthWind.Sales.Backend.Repositories.Entities.Customer customer)
+    {
+        await AddAsync(customer);
+    }
+
+    public async Task UpdateCustomerAsync(NorthWind.Sales.Backend.Repositories.Entities.Customer customer)
+    {
+        Entry(customer).State = EntityState.Modified;
+        await Task.CompletedTask;
+    }
+
+    public async Task DeleteCustomerAsync(string customerId)
+    {
+        var cust = await Customers.FirstOrDefaultAsync(c => c.Id == customerId);
+        if (cust is not null) Remove(cust);
     }
 }

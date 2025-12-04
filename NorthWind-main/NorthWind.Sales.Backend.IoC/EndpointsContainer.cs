@@ -16,6 +16,7 @@ public static class EndpointsContainer
         app.UseNorthWindSuppliersEndpoints();
         app.UseNorthWindShippersEndpoints();
         app.UseNorthWindOrdersEndpoints();
+        app.UseNorthWindCustomersAdminEndpoints();
         app.UseErrorReportsEndpoints();
 
         return app;
